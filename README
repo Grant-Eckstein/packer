@@ -1,0 +1,12 @@
+# Go Packer Command Line Tool
+## A executable packing tool
+
+```bash
+# Example usage
+$ git clone https://github.com/Grant-Eckstein/packer.git
+$ cd packer
+$ go get ...
+$ go build
+$ ./packer pack INSERT_EXE_HERE
+$ ./packed
+```
