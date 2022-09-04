@@ -1,31 +1,110 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
-	"strconv"
+	"log"
+	"os"
+	"os/exec"
+	"path"
 
 	"github.com/spf13/cobra"
 )
 
-// addCmd represents the add command
-var addCmd = &cobra.Command{
-	Use:   "add",
-	Short: "add values passed to function",
-	Long:  `Demo application to demonstrate cobra featues`,
-	Run: func(cmd *cobra.Command, args []string) {
-		sum := 0
-		for _, args := range args {
-			num, err := strconv.Atoi(args)
+func check(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
-			if err != nil {
-				fmt.Println(err)
-			}
-			sum = sum + num
+func assertFileExists(filename string) {
+	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
+		errorText := fmt.Sprintf("File '%s' does not exist", filename)
+		log.Fatal(errorText)
+	}
+}
+
+func pack(filename string) {
+	assertFileExists(filename)
+
+	// Read in file
+	// fileBytes, err := os.ReadFile(filename)
+	// check(err)
+
+	// Generate keys, salt, and IV
+	// eg := everglade.New()
+
+	// Encrypt bytes
+	// iv, ct := eg.EncryptCBC(fileBytes)
+
+	// Generate program tmp/tmp.go
+	/*
+		1. decrypt bytecode
+		2. write bytecode to a tmp file
+		3. mark tmp as executable and run
+	*/
+	prgm := []byte(`
+	package main
+
+	import "fmt"
+	// Example for testing
+	func main() {
+		fmt.Println("hello world")
+	}
+	`)
+
+	// Write new golang program tmp/tmp.go
+	_, err := os.Stat("tmp")
+	if os.IsExist(err) {
+		log.Fatal("tmp directory already exists, please remove this and rerun.")
+	}
+	err = os.Mkdir("tmp", 0777)
+	check(err)
+
+	filePath := path.Join("tmp", "packed.go")
+	err = os.WriteFile(filePath, prgm, 0666)
+	check(err)
+
+	// run go Build tmp.go
+	err = os.Chdir("tmp")
+	check(err)
+
+	_, err = exec.LookPath("go")
+	check(err)
+
+	cmd := exec.Command("go", "build")
+	err = cmd.Run()
+	fmt.Println(cmd)
+	check(err)
+
+	err = os.Rename("tmp", "../packed")
+	check(err)
+
+	// run go Build tmp.go
+	err = os.Chdir("..")
+	check(err)
+
+	err = os.RemoveAll("tmp")
+	check(err)
+
+}
+
+// packCmd represents the add command
+var packCmd = &cobra.Command{
+	Use:   "pack",
+	Short: "pack an executables bytecode",
+	Long:  `pack an executables bytecode`,
+	Run: func(cmd *cobra.Command, files []string) {
+		// For each specified file, pack
+		for _, file := range files {
+			// Assert that file exists
+			pack(file)
+
+			// Pack file
 		}
-		fmt.Println("result of addition is", sum)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(packCmd)
 }
