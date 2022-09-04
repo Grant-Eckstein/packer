@@ -38,13 +38,8 @@ func pack(filename string) {
 	// Encrypt bytes
 	iv, ct := eg.EncryptCBC(fileBytes)
 	exp := eg.Export()
-	// Generate program tmp/tmp.go
-	/*
-		1. decrypt bytecode [DONE]
-		2. write bytecode to a tmp file
-		3. mark tmp as executable and run
-	*/
-	// TODO - replace this with exporting eg.Export() JSON
+
+	// Generate new build
 	prgm := []byte(fmt.Sprintf(`package main
 
 	import (
@@ -117,9 +112,12 @@ func pack(filename string) {
 	if os.IsExist(err) {
 		log.Fatal("tmp directory already exists, please remove this and rerun.")
 	}
+
+	// Create directory to build packed file in
 	err = os.Mkdir("tmp", 0777)
 	check(err)
 
+	// Write builder file in tmp dir
 	filePath := path.Join("tmp", "packed.go")
 	err = os.WriteFile(filePath, prgm, 0666)
 	check(err)
@@ -128,13 +126,16 @@ func pack(filename string) {
 	err = os.Chdir("tmp")
 	check(err)
 
+	// Assert that go is installed
 	_, err = exec.LookPath("go")
 	check(err)
 
+	// Build packed file
 	cmd := exec.Command("go", "build")
 	err = cmd.Run()
 	check(err)
 
+	// Move new exe to current folder
 	newFolder := path.Join("..", "packed")
 	err = os.Rename("tmp", newFolder)
 	check(err)
@@ -143,6 +144,7 @@ func pack(filename string) {
 	err = os.Chdir("..")
 	check(err)
 
+	// Remove tmp dir
 	err = os.RemoveAll("tmp")
 	check(err)
 
@@ -158,8 +160,6 @@ var packCmd = &cobra.Command{
 		for _, file := range files {
 			// Assert that file exists
 			pack(file)
-
-			// Pack file
 		}
 	},
 }
