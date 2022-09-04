@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path"
 
+	"github.com/Grant-Eckstein/everglade"
 	"github.com/spf13/cobra"
 )
 
@@ -28,33 +29,59 @@ func pack(filename string) {
 	assertFileExists(filename)
 
 	// Read in file
-	// fileBytes, err := os.ReadFile(filename)
-	// check(err)
+	fileBytes, err := os.ReadFile(filename)
+	check(err)
 
 	// Generate keys, salt, and IV
-	// eg := everglade.New()
+	eg := everglade.New()
 
 	// Encrypt bytes
-	// iv, ct := eg.EncryptCBC(fileBytes)
-
+	iv, ct := eg.EncryptCBC(fileBytes)
+	fmt.Println("IV is ", iv)
+	fmt.Println("CT is ", ct)
 	// Generate program tmp/tmp.go
 	/*
 		1. decrypt bytecode
 		2. write bytecode to a tmp file
 		3. mark tmp as executable and run
 	*/
-	prgm := []byte(`
-	package main
+	prgm := []byte(fmt.Sprintf(`package main
 
-	import "fmt"
-	// Example for testing
-	func main() {
-		fmt.Println("hello world")
+	import (
+		"fmt"
+		"strconv"
+		"strings"
+	)
+	
+	func recvByteSlice(bs string) []byte {
+		// Read bytes
+		var bb []byte
+		for _, ps := range strings.Split(strings.Trim(bs, "[]"), " ") {
+			pi, _ := strconv.Atoi(ps)
+			bb = append(bb, byte(pi))
+		}
+		return bb
 	}
-	`)
+	
+	func main() {
+		// s := "WAT"
+	
+		// Read in iv
+		ivStr := fmt.Sprintf("%v")
+		iv := recvByteSlice(ivStr)
+	
+		// Read in iv
+		ctStr := fmt.Sprintf("%v")
+		ct := recvByteSlice(ctStr)
+	
+		// Print result
+		fmt.Println("IV:", iv)
+		fmt.Println("CT:", ct)
+	
+	}`, iv, ct))
 
 	// Write new golang program tmp/tmp.go
-	_, err := os.Stat("tmp")
+	_, err = os.Stat("tmp")
 	if os.IsExist(err) {
 		log.Fatal("tmp directory already exists, please remove this and rerun.")
 	}
