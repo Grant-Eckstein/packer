@@ -52,6 +52,10 @@ func pack(filename string) {
 
 	import (
 		"fmt"
+		"io/ioutil"
+		"log"
+		"os"
+		"os/exec"
 		"strconv"
 		"strings"
 	
@@ -69,7 +73,6 @@ func pack(filename string) {
 	}
 	
 	func main() {
-		// s := "WAT"
 	
 		// Read in iv
 		ivStr := fmt.Sprintf("%v")
@@ -87,10 +90,38 @@ func pack(filename string) {
 	
 		data := obj.DecryptCBC(iv, ct)
 	
+		// Create temp file
+		home, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatal(err)
+		}
+	
+		file, err := ioutil.TempFile(home, ".*")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer os.Remove(file.Name())
+	
+		// Write to file
+		err = os.WriteFile(file.Name(), data, 0666)
+		if err != nil {
+			log.Fatal(err)
+		}
+	
+		// Run file
+		cmd := exec.Command("bash", file.Name())
+		out, err := cmd.Output()
+		fmt.Println(out)
+		
+		if err != nil {
+			log.Fatal(err)
+		}
+	
 		// Print result
 		fmt.Println("IV:", iv)
 		fmt.Println("CT:", ct)
 		fmt.Println("Data is:", data)
+		fmt.Println("Filename is: ", file.Name())
 	
 	}
 	`, iv, ct, exp))
