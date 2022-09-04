@@ -1,7 +1,7 @@
 package main
 
 import (
-	"cobra-base/cmd"
+	"packer/cmd"
 )
 
 func main() {
