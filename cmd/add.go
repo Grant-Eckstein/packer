@@ -60,7 +60,6 @@ func pack(filename string) {
 	)
 	
 	func recvByteSlice(bs string) []byte {
-		// Read bytes
 		var bb []byte
 		for _, ps := range strings.Split(strings.Trim(bs, "[]"), " ") {
 			pi, _ := strconv.Atoi(ps)
@@ -105,8 +104,6 @@ func pack(filename string) {
 			log.Fatal(err)
 		}
 	
-		fmt.Println("File name is ", file.Name())
-		// Run file
 		err = exec.Command(file.Name()).Run()
 		
 		if err != nil {
