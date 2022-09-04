@@ -8,9 +8,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "demo",
-	Short: "demo app to demonstrate cobra",
-	Long:  `demo app to demonstrate cobra by addition`,
+	Use:   "packer",
+	Short: "Binary packer",
+	Long:  `POC to demo basic packing in golang`,
 }
 
 func Execute() {
