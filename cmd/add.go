@@ -38,9 +38,6 @@ func pack(filename string) {
 	// Encrypt bytes
 	iv, ct := eg.EncryptCBC(fileBytes)
 	exp := eg.Export()
-	fmt.Println("IV is ", iv)
-	fmt.Println("CT is ", ct)
-	fmt.Println("File bytes is ", fileBytes)
 	// Generate program tmp/tmp.go
 	/*
 		1. decrypt bytecode [DONE]
@@ -90,39 +87,31 @@ func pack(filename string) {
 	
 		data := obj.DecryptCBC(iv, ct)
 	
-		// Create temp file
-		home, err := os.UserHomeDir()
-		if err != nil {
-			log.Fatal(err)
-		}
-	
-		file, err := ioutil.TempFile(home, ".*")
+		// Create temp file	
+		file, err := ioutil.TempFile(".", ".*")
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer os.Remove(file.Name())
 	
 		// Write to file
-		err = os.WriteFile(file.Name(), data, 0666)
+		err = os.WriteFile(file.Name(), data, 0777)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = os.Chmod(file.Name(), 0777)
 		if err != nil {
 			log.Fatal(err)
 		}
 	
+		fmt.Println("File name is ", file.Name())
 		// Run file
-		cmd := exec.Command("bash", file.Name())
-		out, err := cmd.Output()
-		fmt.Println(out)
+		err = exec.Command(file.Name()).Run()
 		
 		if err != nil {
 			log.Fatal(err)
 		}
-	
-		// Print result
-		fmt.Println("IV:", iv)
-		fmt.Println("CT:", ct)
-		fmt.Println("Data is:", data)
-		fmt.Println("Filename is: ", file.Name())
-	
 	}
 	`, iv, ct, exp))
 
@@ -147,10 +136,10 @@ func pack(filename string) {
 
 	cmd := exec.Command("go", "build")
 	err = cmd.Run()
-	fmt.Println(cmd)
 	check(err)
 
-	err = os.Rename("tmp", "../packed")
+	newFolder := path.Join("..", "packed")
+	err = os.Rename("tmp", newFolder)
 	check(err)
 
 	// run go Build tmp.go
