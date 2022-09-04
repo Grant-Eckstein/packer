@@ -37,20 +37,25 @@ func pack(filename string) {
 
 	// Encrypt bytes
 	iv, ct := eg.EncryptCBC(fileBytes)
+	exp := eg.Export()
 	fmt.Println("IV is ", iv)
 	fmt.Println("CT is ", ct)
+	fmt.Println("File bytes is ", fileBytes)
 	// Generate program tmp/tmp.go
 	/*
-		1. decrypt bytecode
+		1. decrypt bytecode [DONE]
 		2. write bytecode to a tmp file
 		3. mark tmp as executable and run
 	*/
+	// TODO - replace this with exporting eg.Export() JSON
 	prgm := []byte(fmt.Sprintf(`package main
 
 	import (
 		"fmt"
 		"strconv"
 		"strings"
+	
+		"github.com/Grant-Eckstein/everglade"
 	)
 	
 	func recvByteSlice(bs string) []byte {
@@ -74,11 +79,21 @@ func pack(filename string) {
 		ctStr := fmt.Sprintf("%v")
 		ct := recvByteSlice(ctStr)
 	
+		// Read in everglade export
+		exStr := fmt.Sprintf("%v")
+		exp := recvByteSlice(exStr)
+	
+		obj := everglade.Import(exp)
+	
+		data := obj.DecryptCBC(iv, ct)
+	
 		// Print result
 		fmt.Println("IV:", iv)
 		fmt.Println("CT:", ct)
+		fmt.Println("Data is:", data)
 	
-	}`, iv, ct))
+	}
+	`, iv, ct, exp))
 
 	// Write new golang program tmp/tmp.go
 	_, err = os.Stat("tmp")
