@@ -21,9 +21,9 @@ const (
 )
 
 func getError(s string, e error) error {
-	// Error reported without a message
+	// When empty, use manual label
 	if s != "" {
-		return errors.New(EmptyError)
+		return errors.New(s)
 	}
 	// Include friendly message and origional error
 	msg := fmt.Sprintf("%v: %v", s, e)
