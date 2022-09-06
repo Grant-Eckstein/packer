@@ -184,21 +184,6 @@ func pack(filename string) {
 		log.Fatal(getError(CopyTempFileToOutput, err))
 	}
 	fmt.Println("Moved new executable")
-
-	// // Change directories back to cwd
-	// err = os.Chdir(cwd)
-	// if err != nil {
-	// 	log.Fatal(getError(ChangeDirError, err))
-	// }
-	// fmt.Println("Changed back to cwd")
-
-	// // Copy tmp file to regular file with target name
-	// outFileName := fmt.Sprintf("packed-%v", filename)
-	// err = copyFile(tmpFileName, outFileName)
-	// if err != nil {
-	// 	log.Fatal(getError(CopyTempFileToOutput, err))
-	// }
-
 }
 
 // packCmd represents the add command
