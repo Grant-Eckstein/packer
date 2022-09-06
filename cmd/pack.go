@@ -3,25 +3,20 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 
 	"github.com/Grant-Eckstein/everglade"
 	"github.com/spf13/cobra"
 )
 
-func check(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func assertFileExists(filename string) {
 	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
-		errorText := fmt.Sprintf("File '%s' does not exist", filename)
-		log.Fatal(errorText)
+		log.Fatal(getError(FileFolderDoesNotExistError, err))
 	}
 }
 
@@ -30,7 +25,9 @@ func pack(filename string) {
 
 	// Read in file
 	fileBytes, err := os.ReadFile(filename)
-	check(err)
+	if err != nil {
+		log.Fatal(getError(ReadFileError, err))
+	}
 
 	// Generate keys, salt, and IV
 	eg := everglade.New()
@@ -107,46 +104,100 @@ func pack(filename string) {
 	}
 	`, iv, ct, exp))
 
-	// Write new golang program tmp/tmp.go
-	_, err = os.Stat("tmp")
-	if os.IsExist(err) {
-		log.Fatal("tmp directory already exists, please remove this and rerun.")
+	// Get current working directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(getError(GetCWDError, err))
 	}
 
-	// Create directory to build packed file in
-	err = os.Mkdir("tmp", 0777)
-	check(err)
+	// TODO - add tmp dir and have it built there
+	tempDir, err := os.MkdirTemp("", "*-temp")
+	if err != nil {
+		log.Fatal(getError(CreateTemporaryFileError, err))
+	}
+	defer os.RemoveAll(tempDir)
+	fmt.Printf("Created temporary dir - %v\n", tempDir)
 
-	// Write builder file in tmp dir
-	filePath := path.Join("tmp", "packed.go")
-	err = os.WriteFile(filePath, prgm, 0666)
-	check(err)
+	// Create temporary file to be built
+	tmpFileName := "*-packed.go"
+	tmpFile, err := ioutil.TempFile(tempDir, tmpFileName)
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal(getError(CreateTemporaryFileError, err))
+	}
+	defer os.Remove(tmpFile.Name())
+	fmt.Printf("Created temporary file - %v\n", tmpFile.Name())
 
-	// run go Build tmp.go
-	err = os.Chdir("tmp")
-	check(err)
+	// Write template with new values to temporary file
+	err = os.WriteFile(tmpFile.Name(), prgm, 0666)
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal(getError(WriteTemporaryFileError, err))
+	}
+	fmt.Printf("Wrote to temporary file - %v\n", tmpFile.Name())
 
 	// Assert that go is installed
 	_, err = exec.LookPath("go")
-	check(err)
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal(getError(GoNotInstalledError, err))
+	}
+	fmt.Println("Verified that go is installed")
 
-	// Build packed file
-	cmd := exec.Command("go", "build")
+	// Change directories into tempDir
+	err = os.Chdir(tempDir)
+	if err != nil {
+		log.Fatal(getError(ChangeDirError, err))
+	}
+
+	// Initialize module
+	cmd := exec.Command("go", "mod", "init", "tmp")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Output is", string(out))
+		log.Fatal(getError(GoGetError, err))
+	}
+	fmt.Println("Initilized temp module")
+
+	// Get reqs for temporary file
+	cmd = exec.Command("go", "get", "...")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Output is", string(out))
+		log.Fatal(getError(GoGetError, err))
+	}
+	fmt.Println("Got dependencies for new module")
+
+	// Build temporary file
+	cmd = exec.Command("go", "build", tmpFile.Name())
 	err = cmd.Run()
-	check(err)
+	if err != nil {
+		log.Fatal(getError(BuildFailedError, err))
+	}
+	fmt.Println("Built new module")
 
-	// Move new exe to current folder
-	newFolder := path.Join("..", "packed")
-	err = os.Rename("tmp", newFolder)
-	check(err)
+	// Move newly built binary back to cwd
+	inFileName := strings.TrimSuffix(tmpFile.Name(), ".go")
+	outFileName := path.Join(cwd, "packed")
+	err = os.Rename(inFileName, outFileName)
+	if err != nil {
+		log.Fatal(getError(CopyTempFileToOutput, err))
+	}
+	fmt.Println("Moved new executable")
 
-	// run go Build tmp.go
-	err = os.Chdir("..")
-	check(err)
+	// // Change directories back to cwd
+	// err = os.Chdir(cwd)
+	// if err != nil {
+	// 	log.Fatal(getError(ChangeDirError, err))
+	// }
+	// fmt.Println("Changed back to cwd")
 
-	// Remove tmp dir
-	err = os.RemoveAll("tmp")
-	check(err)
+	// // Copy tmp file to regular file with target name
+	// outFileName := fmt.Sprintf("packed-%v", filename)
+	// err = copyFile(tmpFileName, outFileName)
+	// if err != nil {
+	// 	log.Fatal(getError(CopyTempFileToOutput, err))
+	// }
 
 }
 
