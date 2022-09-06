@@ -175,8 +175,10 @@ func pack(filename string) {
 	fmt.Printf("%vGot dependencies for new module\n", logsymbols.Success)
 
 	// Build temporary file
-	// TODO - add requirement to cmd to specify target architecture
-	cmd = exec.Command("go", "build", tmpFile.Name())
+	// env GOOS=target-OS GOARCH=target-architecture
+	goosBuildString := fmt.Sprintf("GOOS=%v", Goos)
+	goarchBuildString := fmt.Sprintf("GOARCH=%v", Goarch)
+	cmd = exec.Command("env", goosBuildString, goarchBuildString, "go", "build", tmpFile.Name())
 	err = cmd.Run()
 	if err != nil {
 		printlnFailure("Failed building new module")
@@ -209,6 +211,15 @@ var packCmd = &cobra.Command{
 	},
 }
 
+var Goos string
+var Goarch string
+
 func init() {
 	rootCmd.AddCommand(packCmd)
+	// define required local flag
+	packCmd.Flags().StringVarP(&Goos, "goos", "o", "", "Set build os")
+	packCmd.MarkFlagRequired("goos")
+
+	packCmd.Flags().StringVarP(&Goarch, "goarch", "a", "", "Set build architecture")
+	packCmd.MarkFlagRequired("goarch")
 }
