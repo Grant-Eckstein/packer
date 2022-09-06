@@ -169,6 +169,7 @@ func pack(filename string) {
 	fmt.Println("Got dependencies for new module")
 
 	// Build temporary file
+	// TODO - add requirement to cmd to specify target architecture
 	cmd = exec.Command("go", "build", tmpFile.Name())
 	err = cmd.Run()
 	if err != nil {
