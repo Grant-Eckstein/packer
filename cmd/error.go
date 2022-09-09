@@ -6,7 +6,6 @@ import (
 )
 
 const (
-	EmptyError                  = "Error reported with empty message"
 	GetCWDError                 = "Could not get CWD"
 	FileFolderDoesNotExistError = "File or folder does not exist"
 	ReadFileError               = "Could not read file"
@@ -26,7 +25,7 @@ func getError(s string, e error) error {
 	if s != "" {
 		return errors.New(s)
 	}
-	// Include friendly message and origional error
+	// Include friendly message and original error
 	msg := fmt.Sprintf("%v: %v", s, e)
 	return errors.New(msg)
 }

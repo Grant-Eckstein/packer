@@ -2,7 +2,7 @@
 *A cross-platform executable packing tool*
 
 ## Overview
-Packer is my take on obfustating an existing executable. Since Packer is written in Golang, it functions on all major systems, assuming that your payload also supports the target system. 
+Packer is my take on obfuscating an existing executable. Since Packer is written in Golang, it functions on all major systems, assuming that your payload also supports the target system. 
 
 ## Example usage
 This assumes you are building for a Mac. 

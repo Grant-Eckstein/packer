@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -78,7 +77,7 @@ func pack(filename string) {
 
 	// Create temporary file to be built
 	tmpFileName := "*-packed.go"
-	tmpFile, err := ioutil.TempFile(tempDir, tmpFileName)
+	tmpFile, err := os.CreateTemp(tempDir, tmpFileName)
 	if err != nil {
 		printlnFailure("Failed to create temporary file")
 		log.Fatal(getError(CreateTemporaryFileError, err))
