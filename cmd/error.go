@@ -18,6 +18,7 @@ const (
 	ChangeDirError              = "Unable to change directories"
 	WriteFileError              = "Could not write file"
 	CopyTempFileToOutput        = "Could not copy temporary built executable"
+	ReadTemplateFileError       = "Could not read template file"
 )
 
 func getError(s string, e error) error {

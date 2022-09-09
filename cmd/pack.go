@@ -39,73 +39,26 @@ func pack(filename string) {
 	iv, ct := eg.EncryptCBC(fileBytes)
 	exp := eg.Export()
 
-	// Generate new build
-	prgm := []byte(fmt.Sprintf(`package main
-
-	import (
-		"fmt"
-		"io/ioutil"
-		"log"
-		"os"
-		"os/exec"
-		"strconv"
-		"strings"
-	
-		"github.com/Grant-Eckstein/everglade"
-	)
-	
-	func recvByteSlice(bs string) []byte {
-		var bb []byte
-		for _, ps := range strings.Split(strings.Trim(bs, "[]"), " ") {
-			pi, _ := strconv.Atoi(ps)
-			bb = append(bb, byte(pi))
-		}
-		return bb
+	/*** Generate new build ***/
+	// Load template
+	prgmFile, err := os.ReadFile("cmd/template")
+	if err != nil {
+		printlnFailure("Failed to read in template")
+		log.Fatal(getError(ReadTemplateFileError, err))
 	}
-	
-	func main() {
-	
-		// Read in iv
-		ivStr := fmt.Sprintf("%v")
-		iv := recvByteSlice(ivStr)
-	
-		// Read in iv
-		ctStr := fmt.Sprintf("%v")
-		ct := recvByteSlice(ctStr)
-	
-		// Read in everglade export
-		exStr := fmt.Sprintf("%v")
-		exp := recvByteSlice(exStr)
-	
-		obj := everglade.Import(exp)
-	
-		data := obj.DecryptCBC(iv, ct)
-	
-		// Create temp file	
-		file, err := ioutil.TempFile(".", ".*")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer os.Remove(file.Name())
-	
-		// Write to file
-		err = os.WriteFile(file.Name(), data, 0777)
-		if err != nil {
-			log.Fatal(err)
-		}
+	prgm := string(prgmFile)
 
-		err = os.Chmod(file.Name(), 0777)
-		if err != nil {
-			log.Fatal(err)
-		}
-	
-		err = exec.Command(file.Name()).Run()
-		
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	`, iv, ct, exp))
+	// Insert IV into template
+	ivStr := fmt.Sprintf("%v", iv)
+	prgm = strings.Replace(prgm, "INSERT_IV", ivStr, 1)
+
+	// Insert CT into template
+	ctStr := fmt.Sprintf("%v", ct)
+	prgm = strings.Replace(prgm, "INSERT_CT", ctStr, 1)
+
+	// Insert everglade export into template
+	expStr := fmt.Sprintf("%v", exp)
+	prgm = strings.Replace(prgm, "INSERT_EXP", expStr, 1)
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -134,7 +87,7 @@ func pack(filename string) {
 	fmt.Printf("%vCreated %v\n", logsymbols.Success, tmpFile.Name())
 
 	// Write template with new values to temporary file
-	err = os.WriteFile(tmpFile.Name(), prgm, 0666)
+	err = os.WriteFile(tmpFile.Name(), []byte(prgm), 0666)
 	if err != nil {
 		printlnFailure("Failed to write to temporary file")
 		log.Fatal(getError(WriteTemporaryFileError, err))
