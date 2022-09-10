@@ -1,15 +1,30 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"os"
-	"os/exec"
-	"strconv"
-	"strings"
+	"bytes"
+    "compress/flate"
+    "fmt"
+    "io"
+    "log"
+    "os"
+    "os/exec"
+    "strconv"
+    "strings"
 
-	"github.com/Grant-Eckstein/everglade"
+    "github.com/Grant-Eckstein/everglade"
 )
+
+func decompressFlate(data []byte) ([]byte, error) {
+	dc := flate.NewReader(bytes.NewReader(data))
+	defer dc.Close()
+	rb, err := io.ReadAll(dc)
+	if err != nil {
+		if err != io.EOF {
+			return nil, err
+		}
+	}
+	return rb, nil
+}
 
 func recvByteSlice(bs string) []byte {
 	var bb []byte
@@ -27,8 +42,9 @@ func main() {
 	iv := recvByteSlice(ivStr)
 
 	// Read in iv
-	ctStr := fmt.Sprintf("INSERT_CT")
-	ct := recvByteSlice(ctStr)
+	compressedCTStr := fmt.Sprintf("INSERT_CT")
+	compressedCT := recvByteSlice(compressedCTStr)
+	ct, _ := decompressFlate(compressedCT)
 
 	// Read in everglade export
 	exStr := fmt.Sprintf("INSERT_EXP")

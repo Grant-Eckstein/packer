@@ -14,20 +14,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func assertFileExists(filename string) {
+func assertFileExists(filename string) error {
 	if _, err := os.Stat(filename); errors.Is(err, os.ErrNotExist) {
-		printlnFailure("Could not see input file")
-		log.Fatal(getError(FileFolderDoesNotExistError, err))
+		return err
 	}
+	return nil
 }
 
+// TODO - Add compression utilities as exists as https://github.com/Grant-Eckstein/golang-byte-compression/blob/main/flate.go
+// TODO: Specifically, Store decompress function in template, use compression only in parent
+
 func pack(filename string) {
-	assertFileExists(filename)
+	err := assertFileExists(filename)
+	if err != nil {
+		log.Fatal(getError(FileFolderDoesNotExistError, err))
+	}
 
 	// Read in file
 	fileBytes, err := os.ReadFile(filename)
 	if err != nil {
-		printlnFailure("Failed to read input file")
 		log.Fatal(getError(ReadFileError, err))
 	}
 
@@ -38,12 +43,17 @@ func pack(filename string) {
 	iv, ct := eg.EncryptCBC(fileBytes)
 	exp := eg.Export()
 
+	// Compress ct
+	compressedCT, err := compressBytes(ct)
+	if err != nil {
+		log.Fatal(getError(CompressFileError, err))
+	}
+
 	/*** Generate new build ***/
 	// Load template
 	prgmFile, err := os.ReadFile("cmd/template")
 	if err != nil {
-		printlnFailure("Failed to read in template")
-		log.Fatal(getError(ReadTemplateFileError, err))
+		log.Fatal(getError(ReadFileError, err))
 	}
 	prgm := string(prgmFile)
 
@@ -51,9 +61,9 @@ func pack(filename string) {
 	ivStr := fmt.Sprintf("%v", iv)
 	prgm = strings.Replace(prgm, "INSERT_IV", ivStr, 1)
 
-	// Insert CT into template
-	ctStr := fmt.Sprintf("%v", ct)
-	prgm = strings.Replace(prgm, "INSERT_CT", ctStr, 1)
+	// Insert Compressed CT into template
+	compressedCTStr := fmt.Sprintf("%v", compressedCT)
+	prgm = strings.Replace(prgm, "INSERT_CT", compressedCTStr, 1)
 
 	// Insert everglade export into template
 	expStr := fmt.Sprintf("%v", exp)
@@ -62,14 +72,11 @@ func pack(filename string) {
 	// Get current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
-		printlnFailure("Failed to get current working directory")
 		log.Fatal(getError(GetCWDError, err))
 	}
 
-	// TODO - add tmp dir and have it built there
 	tempDir, err := os.MkdirTemp("", "*-temp")
 	if err != nil {
-		printlnFailure("Failed to create temporary directory")
 		log.Fatal(getError(CreateTemporaryFileError, err))
 	}
 	defer os.RemoveAll(tempDir)
@@ -79,7 +86,6 @@ func pack(filename string) {
 	tmpFileName := "*-packed.go"
 	tmpFile, err := os.CreateTemp(tempDir, tmpFileName)
 	if err != nil {
-		printlnFailure("Failed to create temporary file")
 		log.Fatal(getError(CreateTemporaryFileError, err))
 	}
 	defer os.Remove(tmpFile.Name())
@@ -88,7 +94,6 @@ func pack(filename string) {
 	// Write template with new values to temporary file
 	err = os.WriteFile(tmpFile.Name(), []byte(prgm), 0666)
 	if err != nil {
-		printlnFailure("Failed to write to temporary file")
 		log.Fatal(getError(WriteTemporaryFileError, err))
 	}
 	fmt.Printf("%vWrote to %v\n", logsymbols.Success, tmpFile.Name())
@@ -96,7 +101,6 @@ func pack(filename string) {
 	// Assert that go is installed
 	_, err = exec.LookPath("go")
 	if err != nil {
-		printlnFailure("Could not verify that go is installed")
 		log.Fatal(getError(GoNotInstalledError, err))
 	}
 	fmt.Printf("%vVerified that go is installed\n", logsymbols.Success)
@@ -104,7 +108,6 @@ func pack(filename string) {
 	// Change directories into tempDir
 	err = os.Chdir(tempDir)
 	if err != nil {
-		printlnFailure("Failed Changing Directories into temporary directory")
 		log.Fatal(getError(ChangeDirError, err))
 	}
 
@@ -112,7 +115,6 @@ func pack(filename string) {
 	cmd := exec.Command("go", "mod", "init", "tmp")
 	err = cmd.Run()
 	if err != nil {
-		printlnFailure("Failed initializing temporary module")
 		log.Fatal(getError(GoGetError, err))
 	}
 	fmt.Printf("%vInitilized temp module\n", logsymbols.Success)
@@ -121,7 +123,6 @@ func pack(filename string) {
 	cmd = exec.Command("go", "get", "...")
 	err = cmd.Run()
 	if err != nil {
-		printlnFailure("Failed getting new module dependencies")
 		log.Fatal(getError(GoGetError, err))
 	}
 	fmt.Printf("%vGot dependencies for new module\n", logsymbols.Success)
@@ -133,7 +134,6 @@ func pack(filename string) {
 	cmd = exec.Command("env", goosBuildString, goarchBuildString, "go", "build", tmpFile.Name())
 	err = cmd.Run()
 	if err != nil {
-		printlnFailure("Failed building new module")
 		log.Fatal(getError(BuildFailedError, err))
 	}
 	fmt.Printf("%vBuilt new module\n", logsymbols.Success)
@@ -143,7 +143,6 @@ func pack(filename string) {
 	outFileName := path.Join(cwd, "packed")
 	err = os.Rename(inFileName, outFileName)
 	if err != nil {
-		printlnFailure("Failed moving new executable")
 		log.Fatal(getError(CopyTempFileToOutput, err))
 	}
 	printlnSuccess("Moved new executable")

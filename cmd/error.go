@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/guumaster/logsymbols"
 )
 
 const (
@@ -18,14 +19,13 @@ const (
 	WriteFileError              = "Could not write file"
 	CopyTempFileToOutput        = "Could not copy temporary built executable"
 	ReadTemplateFileError       = "Could not read template file"
+	CompressFileError           = "Could not compress input file"
 )
 
 func getError(s string, e error) error {
-	// When empty, use manual label
-	if s != "" {
+	if s == "" {
 		return errors.New(s)
 	}
-	// Include friendly message and original error
-	msg := fmt.Sprintf("%v: %v", s, e)
+	msg := fmt.Sprintf("%v%v: %v", logsymbols.Error, s, e)
 	return errors.New(msg)
 }
