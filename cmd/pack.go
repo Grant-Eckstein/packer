@@ -9,7 +9,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Grant-Eckstein/everglade"
+	"github.com/Grant-Eckstein/blot"
 	"github.com/guumaster/logsymbols"
 	"github.com/spf13/cobra"
 )
@@ -36,19 +36,15 @@ func pack(filename string) {
 		log.Fatal(getError(ReadFileError, err))
 	}
 
-	// Generate keys, salt, and IV
-	eg := everglade.New()
+	// Run blot and export config
+	b := blot.NewBlot()
 
-	// Encrypt bytes
-	iv, ct := eg.EncryptCBC(fileBytes)
-	exp := eg.Export()
+	b.Add(b.Encode())
+	b.Add(b.Compress())
+	b.Add(b.Encrypt())
 
-	// Compress ct
-	compressedCT, err := compressBytes(ct)
-	if err != nil {
-		log.Fatal(getError(CompressFileError, err))
-	}
-
+	ct := b.Run(fileBytes)
+	be := b.Export()
 	/*** Generate new build ***/
 	// Load template
 	prgmFile, err := os.ReadFile("cmd/template")
@@ -57,17 +53,13 @@ func pack(filename string) {
 	}
 	prgm := string(prgmFile)
 
-	// Insert IV into template
-	ivStr := fmt.Sprintf("%v", iv)
-	prgm = strings.Replace(prgm, "INSERT_IV", ivStr, 1)
+	// Insert blot conf into template
+	beStr := fmt.Sprintf("%v", be)
+	prgm = strings.Replace(prgm, "INSERT_BE", beStr, 1)
 
-	// Insert Compressed CT into template
-	compressedCTStr := fmt.Sprintf("%v", compressedCT)
-	prgm = strings.Replace(prgm, "INSERT_CT", compressedCTStr, 1)
-
-	// Insert everglade export into template
-	expStr := fmt.Sprintf("%v", exp)
-	prgm = strings.Replace(prgm, "INSERT_EXP", expStr, 1)
+	// Insert Blotted file into template
+	ctStr := fmt.Sprintf("%v", ct)
+	prgm = strings.Replace(prgm, "INSERT_CT", ctStr, 1)
 
 	// Get current working directory
 	cwd, err := os.Getwd()
@@ -75,6 +67,7 @@ func pack(filename string) {
 		log.Fatal(getError(GetCWDError, err))
 	}
 
+	// Create temp directory
 	tempDir, err := os.MkdirTemp("", "*-temp")
 	if err != nil {
 		log.Fatal(getError(CreateTemporaryFileError, err))
